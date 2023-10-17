@@ -186,32 +186,11 @@ MUST be emitted when a cancel redemption request is submitted using the `request
 
 ## Rationale
 
-### Symmetry and Non-inclusion of requestWithdraw and requestMint
+### Optionality of cancel and cancel request
 
-In ERC-4626, the spec was written to be fully symmetrical with respect to converting assets and shares by including deposit/withdraw and mint/redeem.
+Certain use cases will allow for the synchronous cancellation of requests but others might not. For example, a DeFi vault that is simply collecting assets from qualified purchasers and hasn't invested any assets yet. Others might have fixed terms where cancellations simply aren't possible unless fulfilled by the protocol. 
 
-Due to the asynchronous nature of requests, the vault can only operate with certainty on the quantity that is fully known at the time of the request (`assets` for `deposit` and `shares` for `redeem`). The deposit request flow cannot work with a `mint` call, because the amount of `assets` for the requested `shares` amount may fluctuate before the fulfillment of the request. Likewise, the redemption request flow cannot work with a `withdraw` call.
-
-### Optionality of flows and cancels
-
-Certain use cases are only asynchronous on one flow but not the other between request and redeem. A good example of an asynchronous redemption vault is a liquid staking token. The unstaking period necessitates support for asynchronous withdrawals, however, deposits can be fully synchronous.
-
-In many cases, canceling a request may not be straightforward or even technically feasible, therefore cancel operations are optional. Defining the cancel flow is still important for certain classes of use cases for which the fulfillment of a Request can take a considerable amount of time.
-
-### Request Implementation flexibility
-
-The standard is flexible enough to support a wide range of interaction patterns for request flows. Pending requests can be handled via internal accounting, globally or on per-user levels, use ERC-20 or [ERC-721](./eip-721.md), etc.
-
-Likewise yield on redemption requests can accrue or not, and the exchange rate of any request may be fixed or variable depending on the implementation.
-
-### Not allowing short-circuiting for claims
-If claims can short circuit, this creates ambiguity for integrators and  complicates the interface with overloaded behavior on request functions.
-
-Instead there can be router contracts which atomically check for claimable amounts immediately upon request. Frontends can dynamically route requests in this way depending on the state and implementation of the vault.
-
-### Operator function parameter on requestDeposit and requestRedeem
-
-To support flows where a smart contract manages the request lifecycle on behalf of a user, the `operator` parameter is included in the `requestDeposit` and `requestRedeem` functions. This is not called `owner` because the `assets` or `shares` are not transferred from this account on request submission, unlike the behaviour of an `owner` on `redeem`. It is also not called `receiver` because the `shares` or `assets` are not necessarily transferred on claiming the request, this can be chosen by the operator when they call `deposit`, `mint`, `redeem`, or `withdraw`.
+While we don't enforce a particular cancel flow, since canceling a request may not be straightforward, cancellable asynchronous vaults must allow for this since the fulfillment of a Request can take a considerable amount of time.
 
 ## Backwards Compatibility
 
@@ -221,13 +200,6 @@ The interface is fully backwards compatible with [ERC-4626](https://eips.ethereu
 
 Centrifuge has been developing [an implementation](https://github.com/centrifuge/liquidity-pools/blob/72f1ddddf3493db5e166f6c3317a6a5c27675eeb/src/LiquidityPool.sol) that can provide a reference.
 
-## Security Considerations
-
-The methods `pendingDepositRequest` and `pendingRedeemRequest` are estimates useful for display purposes, and can be outdated due to the asynchronicity.
-
-In general, asynchronicity concerns make state transitions in the vault much more complex and vulnerable to security risks. Access control on vault operations, clear documentation of state transitioning, and invariant checks should all be performed to mitigate these risks.
-
-It is worth highlighting again here that the claim functions for any asynchronous flows MUST enforce that `msg.sender == operator/owner` to prevent theft of claimable `assets` or `shares`
 
 ## Copyright
 
